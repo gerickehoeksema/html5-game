@@ -5,8 +5,8 @@ var canvasBg = document.getElementById("canvasBg"),
     canvasWidth = canvasBg.width,
     canvasHeight = canvasBg.height,
     player1 = new Player(),
-    //enemies = [],
-    //numEnemies = 5,
+    enemies = [],
+    numEnemies = 5,
     obstacles = [],
     isPlaying = false,
     requestAnimFrame =  window.requestAnimationFrame ||
@@ -27,7 +27,7 @@ function init() {
     document.addEventListener("keydown", function(e) {checkKey(e,true);}, false);
     document.addEventListener("keyup", function(e) {checkKey(e,false);}, false);
     defineObstacles();
-    //initEnemies();
+    initEnemies();
     begin();
 }
 
@@ -43,6 +43,7 @@ function update() {
 }
 
 function draw() {
+    drawAllEnemies();
     player1.draw();
 }
 
@@ -223,9 +224,109 @@ function outOfBounds(a,x,y) {
         treeLineBottom = 570,
         treeLineRight = 750,
         treeLineLeft = 65;
-        ;
+        
         return newBottomY > treeLineBottom ||
             newTopY < treeLineTop ||
             newRightX > treeLineRight ||
             newLeftX < treeLineLeft;
+}
+
+function Enemy() {
+    this.srcX = 140;
+    this.srcY = 600;
+    this.width = 45;
+    this.height = 54;
+    this.drawX = randomRange(0, canvasWidth - this.width);
+    this.drawY = randomRange(0, canvasHeight - this.height);
+    this.centerX = this.drawX + (this.width / 2);
+    this.centerY = this.drawY + (this.height / 2);
+    this.targetX = this.centerX;
+    this.targetY = this.centerY;
+    this.randomMoveTime = randomRange(4000, 10000);
+    this.speed = 1;
+    this.isDead = false;
+
+    var that = this;
+    this.moveInterval = setInterval(function() {
+        that.setTargetLocation();
+    }, that.randomMoveTime)
+};
+
+Enemy.prototype.update = function() {
+    this.centerX = this.drawX + (this.width / 2);
+    this.centerY = this.drawY + (this.height / 2);
+    this.checkDirection();
+}
+
+Enemy.prototype.draw = function() {
+    ctxEntities.drawImage(imgSprite, this.srcX, this.srcY, this.width, this.height, this.drawX, this.drawY, this.width, this.height);
+}
+
+Enemy.prototype.setTargetLocation = function() {
+    this.randomMoveTime = randomRange(4000, 10000);
+    var minX = this.centerX - 50,
+        maxX = this.centerX + 50,
+        minY = this.centerY - 50,
+        maxY = this.centerY + 50;
+
+    if(minX < 0) {
+        minX = 0;
+    }
+
+    if(maxX > canvasWidth) {
+        maxX = canvasWidth;
+    }
+
+    if(minY < 0) {
+        minY = 0;
+    }
+
+    if(maxY > canvasHeight) {
+        maxY = canvasHeight;
+    }
+
+    this.targetX = randomRange(minX, maxX);
+    this.targetY = randomRange(minY, maxY);
+}
+
+Enemy.prototype.checkDirection = function() {
+    if(this.centerX < this.targetX) {
+        this.drawX += this.speed;
+    }
+    else if(this.centerX > this.targetX) {
+        this.drawX -= this.speed;
+    }
+    
+    if(this.centerY < this.targetY) {
+        this.drawY += this.speed;
+    }
+    else if(this.centerY > this.targetY) {
+        this.drawY -= this.speed;
+    }
+}
+
+Enemy.prototype.die = function() {
+    var soundEffect = new Audio("audio/dying.wav");
+    soundEffect.play();
+    clearInterval(this.moveInterval);
+    this.srcX = 185;
+    this.isDead = true;
+}
+
+function initEnemies() {
+    for (let index = 0; index < numEnemies; index++) {
+        enemies[enemies.length] = new Enemy();
+    }
+}
+
+function updateAllEnemies() {
+    for (let index = 0; index < enemies.length; index++) {
+        enemies[index].update()
+    }
+}
+
+function drawAllEnemies() {
+    for (let index = 0; index < enemies.length; index++) {
+        enemies[index].draw()
+    }
 }
