@@ -29,23 +29,24 @@ function init() {
     defineObstacles();
     initEnemies();
     begin();
-}
+};
 
 function begin() {
     ctxBg.drawImage(imgSprite, 0, 0, canvasWidth, canvasHeight, 0, 0, canvasWidth, canvasHeight);
     isPlaying = true;
     requestAnimFrame(loop);
-}
+};
 
 function update() {
     clearCtx(ctxEntities);
+    updateAllEnemies();
     player1.update();
-}
+};
 
 function draw() {
     drawAllEnemies();
     player1.draw();
-}
+};
 
 function loop() {
     if(isPlaying) {
@@ -53,16 +54,17 @@ function loop() {
         draw();
         requestAnimFrame(loop);
     }
-}
+};
 
 function clearCtx(ctx) {
     ctx.clearRect(0,0, canvasWidth, canvasHeight);
-}
+};
 
 function randomRange (min, max) {
     return Math.floor(Math.random() * (max + 1 - min)) + min;
-}
+};
 
+//#region Player
 function Player() {
     this.srcX = 0;
     this.srcY = 600;
@@ -78,27 +80,28 @@ function Player() {
     this.isDownKey = false;
     this.isLeftKey = false;
     this.isSpacebar = false;
-    //this.isShooting = false;
+    this.isShooting = false;
 
-    //var numBullets = 10;
-    //this.bullets =[];
-    //this.currentBullet = 0;
-    // for (var i = 0; i < numBullets; i++) {
-    //     this.bullets[this.bullets.length] = new Bullet()
-    // }
-}
+    var numBullets = 10;
+    this.bullets =[];
+    this.currentBullet = 0;
+    for (var i = 0; i < numBullets; i++) {
+        this.bullets[this.bullets.length] = new Bullet()
+    }
+};
 
 Player.prototype.update = function() {
     this.centerX = this.drawX + (this.width / 2); 
     this.centerY = this.drawY + (this.height / 2);
     this.checkDirection();
-    //this.checkShooting();
-    //this.updateAllBullets();
-}
+    this.checkShooting();
+    this.updateAllBullets();
+};
 
 Player.prototype.draw = function() {
+    this.drawAllBullets();
     ctxEntities.drawImage(imgSprite, this.srcX, this.srcY, this.width, this.height, this.drawX, this.drawY, this.width, this.height);
-}
+};
 
 Player.prototype.checkDirection = function() {
     var newDrawX = this.drawX,
@@ -128,7 +131,7 @@ Player.prototype.checkDirection = function() {
         this.drawX = newDrawX;
         this.drawY = newDrawY;
     }
-}
+};
 
 Player.prototype.checkObstacleCollide = function(newDrawX, newDrawY) {
     var obstacleCounter = 0,
@@ -152,7 +155,38 @@ Player.prototype.checkObstacleCollide = function(newDrawX, newDrawY) {
         return true;
     }
     
-}
+};
+
+Player.prototype.checkShooting = function() {
+    if(this.isSpacebar && !this.isShooting) {
+        this.isShooting = true;
+        this.bullets[this.currentBullet].fire(this.centerX, this.centerY);
+        this.currentBullet++;
+        if(this.currentBullet >= this.bullets.length) {
+            this.currentBullet = 0;
+        }
+    }
+    else if(!this.isSpacebar) {
+        this.isShooting = false;
+    }
+};
+
+Player.prototype.updateAllBullets = function() {
+    for (let index = 0; index < this.bullets.length; index++) {
+        if(this.bullets[index].isFlying) {
+            this.bullets[index].update();
+        }
+    }
+};
+
+Player.prototype.drawAllBullets = function() {
+    for (let index = 0; index < this.bullets.length; index++) {
+        if(this.bullets[index].isFlying) {
+            this.bullets[index].draw();
+        }
+    }
+};
+//#endregion
 
 function Obstacle(x, y, w ,h) {
     this.drawX = x;
@@ -163,7 +197,7 @@ function Obstacle(x, y, w ,h) {
     this.rightX = this.drawX + this.width;
     this.topY = this.drawY;
     this.bottomY = this.drawY + this.height;
-}
+};
 
 function defineObstacles() {
     var treeWidth = 65,
@@ -182,7 +216,7 @@ function defineObstacles() {
         new Obstacle(570, 138, 150, bushHeight),
         new Obstacle(605, 492, 90, bushHeight)
     ];
-}
+};
 
 function checkKey(e, value) {
     var kedID = e.keyCode || e.which; // if not supported
@@ -211,7 +245,7 @@ function checkKey(e, value) {
         player1.isSpacebar = value;
         e.preventDefault();
     }
-}
+};
 
 // Player object not going out of the borders 
 function outOfBounds(a,x,y) { 
@@ -229,8 +263,9 @@ function outOfBounds(a,x,y) {
             newTopY < treeLineTop ||
             newRightX > treeLineRight ||
             newLeftX < treeLineLeft;
-}
+};
 
+//#region Enemy
 function Enemy() {
     this.srcX = 140;
     this.srcY = 600;
@@ -311,22 +346,111 @@ Enemy.prototype.die = function() {
     clearInterval(this.moveInterval);
     this.srcX = 185;
     this.isDead = true;
-}
+};
 
 function initEnemies() {
     for (let index = 0; index < numEnemies; index++) {
         enemies[enemies.length] = new Enemy();
     }
-}
+};
 
 function updateAllEnemies() {
     for (let index = 0; index < enemies.length; index++) {
         enemies[index].update()
     }
-}
+};
 
 function drawAllEnemies() {
     for (let index = 0; index < enemies.length; index++) {
         enemies[index].draw()
     }
-}
+};
+//#endregion
+
+//#region Bullet
+function Bullet() {
+    this.radius = 2;
+    this.width = this.radius * 2;
+    this.height = this.radius * 2;
+    this.drawX = 0;
+    this.drawY = 0;
+    this.isFlying = false;
+    this.xVel = 0;
+    this.yVel = 0;
+    this.speed = 6;
+};
+
+Bullet.prototype.update = function () {
+    this.drawX += this.xVel;
+    this.drawY += this.yVel;
+    this.checkHitEnemy();
+    this.checkHitObstacle();
+    this.checkOutOfBounds();
+};
+
+Bullet.prototype.draw = function() {
+    ctxEntities.fillStyle = "white";
+    ctxEntities.beginPath();
+    ctxEntities.arc(this.drawX, this.drawY, this.radius, 0, Math.PI * 2, false);
+    ctxEntities.closePath();
+    ctxEntities.fill();
+};
+
+Bullet.prototype.fire = function (startX, startY) {
+    var soundEffect = new Audio("audio/shooting.wav");
+    soundEffect.play();
+
+    this.drawX = startX;
+    this.drawY = startY;
+
+    if (player1.srcX === 0) { // Facing south
+        this.xVel = 0;
+        this.yVel = this.speed;
+    } else if (player1.srcX === 35) { // Facing north
+        this.xVel = 0;
+        this.yVel = -this.speed;
+    } else if (player1.srcX === 70) { // Facing west
+        this.xVel = -this.speed;
+        this.yVel = 0;
+    } else if (player1.srcX === 105) { // Facing east
+        this.xVel = this.speed;
+        this.yVel = 0;
+    }
+    
+    this.isFlying = true;
+};
+
+Bullet.prototype.recycle = function() {
+    this.isFlying = false;
+};
+
+Bullet.prototype.checkHitEnemy = function() {
+    for (let index = 0; index < enemies.length; index++) {
+        if(collision(this, enemies[index]) && !enemies[index].isDead) {
+            this.recycle();
+            enemies[index].die();
+        }
+    }
+};
+
+Bullet.prototype.checkHitObstacle = function() {
+    for (let index = 0; index < obstacles.length; index++) {
+        if(collision(this, obstacles[index])) {
+            this.recycle();
+        }
+    }
+};
+
+Bullet.prototype.checkOutOfBounds = function() {
+    if(outOfBounds(this, this.drawX, this.drawY)) {
+        this.recycle();
+    }
+};
+//#endregion
+
+function collision(a, b) {
+    return a.drawX <= b.drawX + b.width && 
+        a.drawX >= b.drawX && 
+        a.drawY <= b.drawY + b.height && 
+        a.drawY >= b.drawY;
+};
